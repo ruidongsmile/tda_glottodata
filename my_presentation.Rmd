@@ -1,0 +1,105 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+library(glottospace)
+library(dplyr)
+library(TDAstats)
+```
+
+```{r}
+wals <- glottoget("wals")
+```
+
+```{r}
+wals_sam <- subset(wals, continent == "South America")
+```
+
+```{r}
+count.na <- function (dataset, feature.name) {
+  num.features <- length(st_drop_geometry(dataset))
+  return(sum(is.na(dataset[[feature.name]])) / nrow(dataset))
+  
+}
+```
+
+```{r}
+# return a 1-dim matrix containing the feature names with NA values less than the threshold a
+select.features <- function(dataset, feature_names, a) {
+  counts <- c()
+  for (x in feature_names) {
+    counts <- append(counts, count.na(wals_sam, x))
+  }
+  result <- t(as.matrix(counts[counts<0.5]))
+  colnames(result) <- feature_names[which(counts<0.5)]
+  
+  return(result)
+}
+```
+
+```{r}
+feature_names <- colnames(wals_sam)[-c(1, 194:208)]
+
+select.features(wals_sam, feature_names, 0.5)
+```
+
+```{r}
+data <- select(wals_sam, 'glottocode', '81A', '82A', '83A', '86A', '129A')
+data.obj <- st_drop_geometry(data)
+data.obj[is.na(data.obj)] <- "unknown"
+
+
+
+data.obj$`81A` <- as.factor(data.obj$`81A`)
+data.obj$`82A` <- as.factor(data.obj$`82A`)
+data.obj$`83A` <- as.factor(data.obj$`83A`)
+data.obj$`86A` <- as.factor(data.obj$`86A`)
+data.obj$`129A` <- as.factor(data.obj$`129A`)
+
+str(data.obj)
+```
+
+```{r}
+gtd.unique <- match(unique(data.obj$glottocode), data.obj$glottocode)
+data.obj.unique <- data.obj[gtd.unique, ]
+str(data.obj.unique)
+```
+
+```{r}
+structure <- glottocreate_structuretable(varnames = c("81A", "82A", "83A", "86A", "129A"))
+structure$type <- rep("factor", 5)
+structure
+?glottocreate
+```
+
+```{r}
+my.glottodata <- glottocreate_addtable(data.obj.unique, structure, name="structure")
+```
+
+```{r}
+my.glottodist <- glottodist(my.glottodata)
+```
+
+```{r}
+dim(my.glottodist)
+```
+
+
+```{r}
+dim(my.glottodist)
+
+my.glottodist
+```
+
+
+```{r}
+my.glottodata.phom <- calculate_homology(my.glottodist, format = "distmat")
+plot_persist(my.glottodata.phom)
+```
+
