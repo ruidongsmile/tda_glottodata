@@ -11,6 +11,7 @@ header_includes:
 - \usepackage[utf8]{inputenc}
 - \usepackage{amsmath}
 - \usepackage{amsthm}
+- \usepackage{mathtools}
   
 output:
   pdf_document:
@@ -21,12 +22,28 @@ output:
 ---
 
 ```{=latex}
+\theoremstyle{definition}
+\newtheorem{thm}{Theorem}[section]
+
+\theoremstyle{definition}
+\newtheorem{defn}{Definition}[section]
+
+\theoremstyle{definition}
+\newtheorem{example}{Example}[section]
+
+\newcommand{\se}{\textrm{SE}}
+\newcommand{\rse}{\textrm{RSE}}
+\newcommand{\tss}{\textrm{TSS}}
+\newcommand{\rss}{\textrm{RSS}}
+```
+
+```{=latex}
 \section{How I can contribute to the SAPPHIRE project}
 ```
 
 
 ```{=latex}
-\subsection{Update the \texttt{glottodist} with metrics other than Gower's distance}
+\subsection{Update the \texttt{glottodist} with different metrics other than Gower's distance}
 We can implement other kinds of metrics like listed in \cite{Boriah2008SimilarityMF},
 Take Eskin's distance as an example:
 $$
@@ -40,23 +57,48 @@ $$
 ```
 
 ```{=latex}
-\subsection{Add a function to compute the Hausdorff distance of two datasets}
+\subsection{The Hausdorff distance of two datasets}
+The \textbf{Hausdorff distance} is a qunatity to measure the distance between two subsets of a metric space.
+\begin{defn}[Hausdorff distance]
+Let $X$ and $Y$ be two subsets of a metric space $(M, d)$.
+The Hausdorff distance $d_H(X, Y)$ is given by
+$$
+d_H(X, Y)
+=
+\max\left\{\sup_{x\in X}d(x, Y), \sup_{y\in Y}d(X, y)\right\},
+$$
+where $d(x, Y):= \inf_{y\in Y}d(x,y)$.
+\end{defn}
 
-def Hausdorff
+More than that, 
+we can take the \textbf{Gromov-Hausdorff distance}, 
+which measures the difference between two different datasets,
+into account.
 ```
 
 
 ```{=latex}
 \subsection{Topological data analysis (TDA)}
-sdfs \cite{Atienza_2020}
+Using topological data analysis methods to analyze the \texttt{glottodata}  
+\begin{itemize}
+\item Linguistic data analysis: \cite{MR3767893}, \cite{MR4368966}
+\item Spatial data: \cite{MR4433804}
+\end{itemize}
 ```
 
 ```{=latex}
 \subsection{Spectral graph theory methods}
+Construct a graph from the \texttt{glottodata} and analyse the graph, for example, analyse the spectrum of the Laplacian operator of the graph or apply heat kernel analysis methods \cite{MR4322668} to analyse the \texttt{ glottodata}.
+```
 
+```{=latex}
+\section{Some codes}
 ```
 
 
+```{=latex}
+\subsection{Load the \texttt{wals} datasets}
+```
 
 ```{r}
 library(glottospace)
@@ -73,10 +115,12 @@ wals <- glottoget("wals")
 ```{r}
 #select the data wrt Aouth America 
 wals_sam <- subset(wals, continent == "South America")
+wals_asia <- subset(wals, continent=="Asia")
 ```
 
 ```{r}
-# Define a function select.features(dataset, feature_names, a) to get all features of dataset that the percentage of NA values is less than the threshold a
+# Define a function select.features to get all features of dataset that the percentage of 
+# NA values is less than the threshold a
 count.na <- function (dataset, feature.name) {
   num.features <- length(st_drop_geometry(dataset))
   return(sum(is.na(dataset[[feature.name]])) / nrow(dataset))
@@ -101,69 +145,35 @@ select.features(wals_sam, feature_names, 0.5)
 ```
 
 ```{r}
-data <- select(wals_sam, 'glottocode', '81A', '82A', '83A', '86A', '129A')
-data.obj <- st_drop_geometry(data)
-
-data.obj$`81A` <- as.factor(data.obj$`81A`)
-data.obj$`82A` <- as.factor(data.obj$`82A`)
-data.obj$`83A` <- as.factor(data.obj$`83A`)
-data.obj$`86A` <- as.factor(data.obj$`86A`)
-data.obj$`129A` <- as.factor(data.obj$`129A`)
-```
-
-```{r}
-gtd.unique <- match(unique(data.obj$glottocode), data.obj$glottocode)
-data.obj.unique <- data.obj[gtd.unique, ]
-str(data.obj.unique)
-```
-
-```{r}
-structure <- glottocreate_structuretable(varnames = c("81A", "82A", "83A", "86A", "129A"))
+glottodata.wals <- function (continent_name) {
+  structure <- glottocreate_structuretable(varnames = c("81A","82A", "83A", "86A", "129A"))
 structure$type <- rep("factor", 5)
+  wals_data <- subset(wals, continent == continent_name)
+  data <- select(wals_data, 'glottocode', '81A', '82A', '83A', '86A', '129A')
+  data.df <- st_drop_geometry(data)
 
-```
-
-```{r}
-my.glottodata <- glottocreate_addtable(data.obj.unique, structure, name="structure")
-```
-
-```{r}
-my.glottodist <- glottodist(my.glottodata)
-```
-
-
-```{r}
-my.glottodist[is.na(my.glottodist)] <- 0
-```
-
-```{r}
-my.glottodata.phom <- calculate_homology(my.glottodist)
-plot_persist(my.glottodata.phom)
-```
-
-```{r}
-plot_barcode(my.glottodata.phom)
-```
-
-```{r}
-plot(st_geometry(wals_sam))
-```
-
-```{r}
-my.glottodata_1 <- glottoclean(my.glottodata)
-structure <- my.glottodata[["structure"]]
-my.glottodata_1 <- glottosimplify(my.glottodata_1)
-my.glottodata_1 <- tibble::column_to_rownames(my.glottodata_1, "glottocode")
-```
-
-
-```{r}
-# Hausdorff distance
-glotto.hausdorff.dist <- function(glottodata1, glottodata2) {
+  data.df$`81A` <- as.factor(data.df$`81A`)
+  data.df$`82A` <- as.factor(data.df$`82A`)
+  data.df$`83A` <- as.factor(data.df$`83A`)
+  data.df$`86A` <- as.factor(data.df$`86A`)
+  data.df$`129A` <- as.factor(data.df$`129A`)
   
+  data.unique <- match(unique(data.df$glottocode),
+                           data.df$glottocode)
+  data.df.unique <- data.df[data.unique, ]
+  glottodata <- glottocreate_addtable(data.df.unique, structure,
+                                          name="structure")
+  return(glottodata)
 }
+
+glottodata_sam <- glottodata.wals("South America")
+glottodata_asia <- glottodata.wals("Asia")
 ```
 
+
+```{=latex}
+\subsection{The Hausdorff distance}
+```
 
 ```{r}
 overlap.dist <- function (x, y){
@@ -187,102 +197,126 @@ overlap.supX.Y.dist <- function(X, Y) {
 }
 
 overlap.hausdorff.dist <- function(X, Y) {
+  X <- glottoclean(X)
+  structure <- X[["structure"]]
+  X <- glottosimplify(X)
+  X <- tibble::column_to_rownames(X, "glottocode")
+  
+  X <- data.frame(lapply(X, as.character),
+                                stringsAsFactors = FALSE)
+  X[is.na(X)] <- "unknown"
+  
+  Y <- glottoclean(Y)
+  Y <- glottosimplify(Y)
+  Y <- tibble::column_to_rownames(Y, "glottocode")
+  Y <- data.frame(lapply(Y, as.character),
+                                  stringsAsFactors = FALSE)
+  Y[is.na(Y)] <- "unknown"
+  
   
   result <- max(overlap.supX.Y.dist(X, Y), overlap.supX.Y.dist(Y,X))
   return(result)
 }
 ```
 
-```{r}
-wals_asia <- subset(wals, continent=="Asia")
-data_asia <- select(wals_asia, 'glottocode', '81A', '82A', '83A', '86A', '129A')
-data_asia <- st_drop_geometry(data_asia)
-
-data_asia$`81A` <- as.factor(data_asia$`81A`)
-data_asia$`82A` <- as.factor(data_asia$`82A`)
-data_asia$`83A` <- as.factor(data_asia$`83A`)
-data_asia$`86A` <- as.factor(data_asia$`86A`)
-data_asia$`129A` <- as.factor(data_asia$`129A`)
-
-str(data_asia)
-
-data_asia.unique <- match(unique(data_asia$glottocode), data_asia$glottocode)
-data_asia.unique <- data_asia[data_asia.unique, ]
-str(data_asia.unique)
-
-glottodata.asia <- glottocreate_addtable(data_asia.unique, structure, name="structure")
-```
-
-
-```{r}
-glottodata.asia_1 <- glottoclean(glottodata.asia)
-structure <- glottodata.asia_1[["structure"]]
-glottodata.asia_1 <- glottosimplify(glottodata.asia_1)
-glottodata.asia_1 <- tibble::column_to_rownames(glottodata.asia_1, "glottocode")
+```{=latex}
+Compute the Hausdorff distance between South America and Asia:
 ```
 
 ```{r}
-my.glottodata_1 <- data.frame(lapply(my.glottodata_1, as.character), stringsAsFactors = FALSE)
-my.glottodata_1[is.na(my.glottodata_1)] <- "unknown"
-
-glottodata.asia_1 <- data.frame(lapply(glottodata.asia_1, as.character), stringsAsFactors = FALSE)
-glottodata.asia_1[is.na(glottodata.asia_1)] <- "unknown"
-```
-
-
-```{r}
-# overlap.hausdorff.dist(glottodata.asia_1, my.glottodata_1)
-```
-
-
-```{r}
-asia.dist <- glottodist(glottodata.asia)
-
-asia.dist[is.na(asia.dist)] <- 0
-asia_phm <- calculate_homology(asia.dist)
-plot_persist(asia_phm)
-```
-```{r}
-plot_barcode(asia_phm)
-```
-
-```{r}
-plot(st_coordinates(wals_sam))
-```
-
-```{r}
-plot(st_coordinates(wals_asia))
-```
-
-```{r}
-plot_persist(calculate_homology(st_coordinates(wals_asia)))
-```
-
-```{r}
-wals_europe <- subset(wals, continent=="Europe")
-plot(st_coordinates(wals_europe))
-```
-
-```{r}
-europe_phm <- calculate_homology(st_coordinates(wals_europe))
-plot_persist(europe_phm)
-```
-```{r}
-plot_barcode(europe_phm)
-```
-```{r}
-wals_asia_geo <- st_geometry(wals_asia)
-wals_asia_geo
-plot_persist(calculate_homology(st_coordinates(wals_asia_geo)))
-```
-
-```{r}
-plot(st_geometry(wals_asia))
+overlap.hausdorff.dist(glottodata_asia, glottodata_sam)
 ```
 
 
 ```{=latex}
-\bibliographystyle{unsrt}
+\subsection{TDA}
+\subsubsection{The linguistic syntactic data of South America and Asia}
+```
+
+```{r}
+glottodist_sam <- glottodist(glottodata_sam)
+glottodist_sam[is.na(glottodist_sam)] <- 0
+
+glottodist_asia <- glottodist(glottodata_asia)
+glottodist_asia[is.na(glottodist_asia)] <- 0
+```
+
+
+
+```{=latex}
+The persistence barcode and persistence diagram of South America language syntactic structures
+```
+
+
+```{r}
+sam.phom <- calculate_homology(glottodist_sam)
+
+par(mfrow=c(1,2))
+plot_barcode(sam.phom)
+plot_persist(sam.phom)
+```
+
+```{=latex}
+The persistence barcode and persistence diagram of Asia language syntactic structures
+```
+
+
+```{r}
+asia.phom <- calculate_homology(glottodist_asia)
+
+par(mfrow=c(1,2))
+plot_barcode(asia.phom)
+plot_persist(asia.phom)
+```
+
+```{=latex}
+\subsubsection{The spatial data of South America and Asia}
+```
+
+```{r}
+sam_coordinates <- st_coordinates(wals_sam)
+asia_coordinates <- st_coordinates(wals_asia)
+
+sam_geo_phm <- calculate_homology(sam_coordinates)
+asia_geo_phm <- calculate_homology(asia_coordinates)
+```
+
+```{r}
+par(mfrow=c(1,2))
+plot(sam_coordinates, main="South America")
+plot(asia_coordinates, main="Asia")
+```
+
+
+```{=latex}
+The persistence barcodes of spatial data of South America and Asia:
+```
+
+```{r}
+par(mfrow=c(1,2))
+plot_barcode(sam_geo_phm)
+plot_barcode(asia_geo_phm)
+
+```
+
+```{=latex}
+The persistence diagrams of spatial data of South America and Asia:
+```
+
+```{r}
+par(mfrow=c(1,2))
+plot_persist(sam_geo_phm)
+plot_persist(asia_geo_phm)
+```
+
+```{=latex}
+\subsection{Futher codes}
+Codes about spectral graph theory methods and heat kernel analysis methods like described in \cite{MR4322668} in the future?
+```
+
+
+```{=latex}
+\bibliographystyle{apalike}
 \bibliography{references}
 ```
 
