@@ -152,7 +152,6 @@ glottodist
 library(sf)      
 library(terra)
 plot(st_geometry(wals_sam))
-
 ```
 
 

@@ -1,36 +1,88 @@
 ---
-title: "R Notebook"
-output: html_notebook
+title: "My presentation"
+author: "Rui Dong"
+date: "2022-10-14"
+bibliography: references.bib
+
+header_includes:
+- \usepackage{amsmath}
+- \usepackage{amssymb}
+- \usepackage[english]{babel}
+- \usepackage[utf8]{inputenc}
+- \usepackage{amsmath}
+- \usepackage{amsthm}
+  
+output:
+  pdf_document:
+    number_sections: true
+    toc: true
+    extra_dependencies: ["amsthm", "amsmath"]
+  html_notebook: default
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+```{=latex}
+\section{How I can contribute to the SAPPHIRE project}
+```
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{=latex}
+\subsection{Update the \texttt{glottodist} with metrics other than Gower's distance}
+We can implement other kinds of metrics like listed in \cite{Boriah2008SimilarityMF},
+Take Eskin's distance as an example:
+$$
+S_k(X_k, Y_k)
+=
+\begin{cases}
+1 &\text{if } X_k=Y_k\\
+\frac{n_k^2}{n_k^2+2} &\text{otherwise}
+\end{cases}
+$$
+```
+
+```{=latex}
+\subsection{Add a function to compute the Hausdorff distance of two datasets}
+
+def Hausdorff
+```
+
+
+```{=latex}
+\subsection{Topological data analysis (TDA)}
+sdfs \cite{Atienza_2020}
+```
+
+```{=latex}
+\subsection{Spectral graph theory methods}
+
+```
+
+
 
 ```{r}
 library(glottospace)
 library(dplyr)
 library(TDAstats)
+library(sf)
 ```
 
 ```{r}
+# load the dataset wals
 wals <- glottoget("wals")
 ```
 
 ```{r}
+#select the data wrt Aouth America 
 wals_sam <- subset(wals, continent == "South America")
 ```
 
 ```{r}
+# Define a function select.features(dataset, feature_names, a) to get all features of dataset that the percentage of NA values is less than the threshold a
 count.na <- function (dataset, feature.name) {
   num.features <- length(st_drop_geometry(dataset))
   return(sum(is.na(dataset[[feature.name]])) / nrow(dataset))
   
 }
-```
 
-```{r}
-# return a 1-dim matrix containing the feature names with NA values less than the threshold a
 select.features <- function(dataset, feature_names, a) {
   counts <- c()
   for (x in feature_names) {
@@ -45,24 +97,18 @@ select.features <- function(dataset, feature_names, a) {
 
 ```{r}
 feature_names <- colnames(wals_sam)[-c(1, 194:208)]
-
 select.features(wals_sam, feature_names, 0.5)
 ```
 
 ```{r}
 data <- select(wals_sam, 'glottocode', '81A', '82A', '83A', '86A', '129A')
 data.obj <- st_drop_geometry(data)
-data.obj[is.na(data.obj)] <- "unknown"
-
-
 
 data.obj$`81A` <- as.factor(data.obj$`81A`)
 data.obj$`82A` <- as.factor(data.obj$`82A`)
 data.obj$`83A` <- as.factor(data.obj$`83A`)
 data.obj$`86A` <- as.factor(data.obj$`86A`)
 data.obj$`129A` <- as.factor(data.obj$`129A`)
-
-str(data.obj)
 ```
 
 ```{r}
@@ -74,8 +120,7 @@ str(data.obj.unique)
 ```{r}
 structure <- glottocreate_structuretable(varnames = c("81A", "82A", "83A", "86A", "129A"))
 structure$type <- rep("factor", 5)
-structure
-?glottocreate
+
 ```
 
 ```{r}
@@ -86,20 +131,158 @@ my.glottodata <- glottocreate_addtable(data.obj.unique, structure, name="structu
 my.glottodist <- glottodist(my.glottodata)
 ```
 
+
 ```{r}
-dim(my.glottodist)
+my.glottodist[is.na(my.glottodist)] <- 0
 ```
 
-
 ```{r}
-dim(my.glottodist)
-
-my.glottodist
-```
-
-
-```{r}
-my.glottodata.phom <- calculate_homology(my.glottodist, format = "distmat")
+my.glottodata.phom <- calculate_homology(my.glottodist)
 plot_persist(my.glottodata.phom)
+```
+
+```{r}
+plot_barcode(my.glottodata.phom)
+```
+
+```{r}
+plot(st_geometry(wals_sam))
+```
+
+```{r}
+my.glottodata_1 <- glottoclean(my.glottodata)
+structure <- my.glottodata[["structure"]]
+my.glottodata_1 <- glottosimplify(my.glottodata_1)
+my.glottodata_1 <- tibble::column_to_rownames(my.glottodata_1, "glottocode")
+```
+
+
+```{r}
+# Hausdorff distance
+glotto.hausdorff.dist <- function(glottodata1, glottodata2) {
+  
+}
+```
+
+
+```{r}
+overlap.dist <- function (x, y){
+  sum(x != y) / length(x)
+}
+
+overlap.x.Y.dist <- function(x, Y) {
+  result <- c()
+  for (i in 1:nrow(Y)) {
+    result <- append(result, overlap.dist(x, Y[i,]))
+  }  
+  return(min(result))
+}
+
+overlap.supX.Y.dist <- function(X, Y) {
+  result <- c()
+  for (i in 1:nrow(X)) {
+    result <- append(result, overlap.x.Y.dist(X[i, ], Y))
+  }
+  return(max(result))
+}
+
+overlap.hausdorff.dist <- function(X, Y) {
+  
+  result <- max(overlap.supX.Y.dist(X, Y), overlap.supX.Y.dist(Y,X))
+  return(result)
+}
+```
+
+```{r}
+wals_asia <- subset(wals, continent=="Asia")
+data_asia <- select(wals_asia, 'glottocode', '81A', '82A', '83A', '86A', '129A')
+data_asia <- st_drop_geometry(data_asia)
+
+data_asia$`81A` <- as.factor(data_asia$`81A`)
+data_asia$`82A` <- as.factor(data_asia$`82A`)
+data_asia$`83A` <- as.factor(data_asia$`83A`)
+data_asia$`86A` <- as.factor(data_asia$`86A`)
+data_asia$`129A` <- as.factor(data_asia$`129A`)
+
+str(data_asia)
+
+data_asia.unique <- match(unique(data_asia$glottocode), data_asia$glottocode)
+data_asia.unique <- data_asia[data_asia.unique, ]
+str(data_asia.unique)
+
+glottodata.asia <- glottocreate_addtable(data_asia.unique, structure, name="structure")
+```
+
+
+```{r}
+glottodata.asia_1 <- glottoclean(glottodata.asia)
+structure <- glottodata.asia_1[["structure"]]
+glottodata.asia_1 <- glottosimplify(glottodata.asia_1)
+glottodata.asia_1 <- tibble::column_to_rownames(glottodata.asia_1, "glottocode")
+```
+
+```{r}
+my.glottodata_1 <- data.frame(lapply(my.glottodata_1, as.character), stringsAsFactors = FALSE)
+my.glottodata_1[is.na(my.glottodata_1)] <- "unknown"
+
+glottodata.asia_1 <- data.frame(lapply(glottodata.asia_1, as.character), stringsAsFactors = FALSE)
+glottodata.asia_1[is.na(glottodata.asia_1)] <- "unknown"
+```
+
+
+```{r}
+# overlap.hausdorff.dist(glottodata.asia_1, my.glottodata_1)
+```
+
+
+```{r}
+asia.dist <- glottodist(glottodata.asia)
+
+asia.dist[is.na(asia.dist)] <- 0
+asia_phm <- calculate_homology(asia.dist)
+plot_persist(asia_phm)
+```
+```{r}
+plot_barcode(asia_phm)
+```
+
+```{r}
+plot(st_coordinates(wals_sam))
+```
+
+```{r}
+plot(st_coordinates(wals_asia))
+```
+
+```{r}
+plot_persist(calculate_homology(st_coordinates(wals_asia)))
+```
+
+```{r}
+wals_europe <- subset(wals, continent=="Europe")
+plot(st_coordinates(wals_europe))
+```
+
+```{r}
+europe_phm <- calculate_homology(st_coordinates(wals_europe))
+plot_persist(europe_phm)
+```
+```{r}
+plot_barcode(europe_phm)
+```
+```{r}
+wals_asia_geo <- st_geometry(wals_asia)
+wals_asia_geo
+plot_persist(calculate_homology(st_coordinates(wals_asia_geo)))
+```
+
+```{r}
+plot(st_geometry(wals_asia))
+```
+
+
+```{=latex}
+\bibliographystyle{unsrt}
+\bibliography{references}
 ```
 
